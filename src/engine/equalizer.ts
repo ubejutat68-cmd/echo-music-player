@@ -19,7 +19,7 @@ class Equalizer {
       this.filters.push(filter);
     }
 
-    return this.inputNode;
+    return this.filters[this.filters.length - 1] || this.inputNode;
   }
 
   setBands(bands: number[]): void {
