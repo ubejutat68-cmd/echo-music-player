@@ -12,6 +12,7 @@ export function SearchPage() {
   });
   const [onlineResults, setOnlineResults] = useState<any[]>([]);
   const [searchingOnline, setSearchingOnline] = useState(false);
+  const [onlineError, setOnlineError] = useState('');
   const tracks = useLibraryStore((s) => s.tracks);
 
   const results = useMemo((): SearchResult | null => {
@@ -44,16 +45,24 @@ export function SearchPage() {
       localStorage.setItem('searchHistory', JSON.stringify(newHistory));
     }
     // Trigger online search
-    if (q.trim() && window.api?.neteaseSearch) {
-      setSearchingOnline(true);
-      window.api.neteaseSearch(q.trim()).then((songs) => {
-        setOnlineResults(songs || []);
-        setSearchingOnline(false);
-      }).catch(() => {
-        setSearchingOnline(false);
-      });
+    if (q.trim()) {
+      if (window.api?.neteaseSearch) {
+        setSearchingOnline(true);
+        setOnlineError('');
+        window.api.neteaseSearch(q.trim()).then((songs) => {
+          setOnlineResults(songs || []);
+          setSearchingOnline(false);
+        }).catch((e: any) => {
+          setOnlineError(e?.message || '在线搜索失败');
+          setSearchingOnline(false);
+        });
+      } else {
+        setOnlineResults([]);
+        setOnlineError('在线搜索需要 Electron 环境');
+      }
     } else {
       setOnlineResults([]);
+      setOnlineError('');
     }
   };
 
@@ -128,8 +137,9 @@ export function SearchPage() {
       {query.trim() && (
         <Box sx={{ mt: 4 }}>
           <Typography variant="h6" sx={{ mb: 1 }}>
-            在线搜索 {searchingOnline ? '(搜索中...)' : onlineResults.length > 0 ? `(${onlineResults.length})` : ''}
+            网易云在线 {searchingOnline ? '(搜索中...)' : onlineResults.length > 0 ? `(${onlineResults.length})` : onlineError ? '(连接失败)' : '(无结果)'}
           </Typography>
+          {onlineError && <Typography variant="body2" color="error.light" sx={{ mb: 1 }}>{onlineError}</Typography>}
           {onlineResults.length > 0 && (
             <Box>
               {onlineResults.map((song) => (

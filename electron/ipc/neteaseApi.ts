@@ -1,15 +1,5 @@
-let neteaseModule: any = null;
-
-async function getModule() {
-  if (!neteaseModule) {
-    try {
-      neteaseModule = await import('NeteaseCloudMusicApi');
-    } catch {
-      neteaseModule = require('NeteaseCloudMusicApi');
-    }
-  }
-  return neteaseModule;
-}
+// Use require directly — most reliable in Vite-bundled Electron main process
+const { cloudsearch, song_url_v1, lyric_new } = require('NeteaseCloudMusicApi');
 
 export interface NeteaseTrack {
   id: number;
@@ -21,10 +11,12 @@ export interface NeteaseTrack {
 
 export async function searchNeteaseMusic(query: string, limit = 30): Promise<NeteaseTrack[]> {
   try {
-    const mod = await getModule();
-    const result = await mod.cloudsearch({ keywords: query, limit, type: 1 });
+    console.log('[Netease] Searching:', query);
+    const result = await cloudsearch({ keywords: query, limit, type: 1 });
     if (result.body.code === 200) {
-      return (result.body.result?.songs || []).map((s: any) => ({
+      const songs = result.body.result?.songs || [];
+      console.log(`[Netease] Found ${songs.length} results`);
+      return songs.map((s: any) => ({
         id: s.id,
         name: s.name,
         artists: s.ar || [],
@@ -32,37 +24,40 @@ export async function searchNeteaseMusic(query: string, limit = 30): Promise<Net
         duration: (s.dt || 0) / 1000,
       }));
     }
+    console.log('[Netease] Unexpected code:', result.body.code);
     return [];
-  } catch (err) {
-    console.error('Netease search error:', err);
+  } catch (err: any) {
+    console.error('[Netease] Search error:', err.message || err);
     return [];
   }
 }
 
 export async function getNeteaseSongUrl(id: number): Promise<string | null> {
   try {
-    const mod = await getModule();
-    const result = await mod.song_url_v1({ id, level: 'standard' });
+    console.log('[Netease] Getting URL for song:', id);
+    const result = await song_url_v1({ id, level: 'standard' });
     if (result.body.code === 200 && result.body.data?.length > 0) {
-      return result.body.data[0].url || null;
+      const url = result.body.data[0].url;
+      console.log('[Netease] Got URL:', url ? 'OK' : 'null');
+      return url || null;
     }
+    console.log('[Netease] URL code:', result.body.code);
     return null;
-  } catch (err) {
-    console.error('Netease song URL error:', err);
+  } catch (err: any) {
+    console.error('[Netease] URL error:', err.message || err);
     return null;
   }
 }
 
 export async function getNeteaseLyric(id: number): Promise<string | null> {
   try {
-    const mod = await getModule();
-    const result = await mod.lyric_new({ id });
+    const result = await lyric_new({ id });
     if (result.body.code === 200) {
       return result.body.lrc?.lyric || null;
     }
     return null;
-  } catch (err) {
-    console.error('Netease lyric error:', err);
+  } catch (err: any) {
+    console.error('[Netease] Lyric error:', err.message || err);
     return null;
   }
 }
