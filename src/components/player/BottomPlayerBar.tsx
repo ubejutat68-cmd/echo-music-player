@@ -3,12 +3,14 @@ import { Lyrics, PictureInPicture } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { usePlayerStore } from '@/stores/playerStore';
 import { useLyricStore } from '@/stores/lyricStore';
+import { useAudioEngine } from '@/hooks/useAudioEngine';
 import { CoverArt } from '@/components/common/CoverArt';
 import { PlayerControls } from './PlayerControls';
 import { ProgressBar } from './ProgressBar';
 import { VolumeControl } from './VolumeControl';
 
 export function BottomPlayerBar() {
+  useAudioEngine();
   const currentTrack = usePlayerStore((s) => s.currentTrack);
   const toggleDesktopLyric = useLyricStore((s) => s.toggleDesktopLyric);
   const showDesktopLyric = useLyricStore((s) => s.showDesktopLyric);
