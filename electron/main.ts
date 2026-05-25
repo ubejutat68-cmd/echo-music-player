@@ -2,6 +2,7 @@ import { app, BrowserWindow, ipcMain, globalShortcut } from 'electron';
 import { createMainWindow, getMainWindow } from './windows/mainWindow';
 import { createMiniPlayer, closeMiniPlayer } from './windows/miniPlayer';
 import { createDesktopLyric, closeDesktopLyric } from './windows/desktopLyric';
+import { createTray } from './windows/tray';
 import { scanFolders } from './ipc/fileScanner';
 import { parseMetadata } from './ipc/metadataParser';
 import { parseLyric } from './ipc/lyricParser';
@@ -72,13 +73,12 @@ function registerMediaKeys(): void {
 app.whenReady().then(() => {
   registerIpcHandlers();
   createMainWindow();
+  createTray();
   registerMediaKeys();
 });
 
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-    app.quit();
-  }
+  // Don't quit; minimize to tray
 });
 
 app.on('activate', () => {

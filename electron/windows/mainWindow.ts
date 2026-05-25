@@ -17,6 +17,13 @@ export function createMainWindow(): BrowserWindow {
     },
   });
 
+  mainWindow.on('close', (e) => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      e.preventDefault();
+      mainWindow.hide();
+    }
+  });
+
   if (process.env.VITE_DEV_SERVER_URL) {
     mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL);
   } else {
