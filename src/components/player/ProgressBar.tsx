@@ -1,6 +1,7 @@
 import { Box, Slider, Typography } from '@mui/material';
 import { usePlayerStore } from '@/stores/playerStore';
 import { formatTime } from '@/utils/formatTime';
+import { audioEngine } from '@/engine/audioEngine';
 
 export function ProgressBar() {
   const currentTime = usePlayerStore((s) => s.currentTime);
@@ -8,7 +9,9 @@ export function ProgressBar() {
   const seek = usePlayerStore((s) => s.seek);
 
   const handleChange = (_e: Event, value: number | number[]) => {
-    seek(value as number);
+    const time = value as number;
+    seek(time);
+    audioEngine.seek(time);
   };
 
   return (

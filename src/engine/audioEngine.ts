@@ -1,5 +1,11 @@
 import { equalizer } from './equalizer';
 
+let onTrackEnded: (() => void) | null = null;
+
+export function setOnTrackEnded(cb: (() => void) | null) {
+  onTrackEnded = cb;
+}
+
 class AudioEngine {
   private ctx: AudioContext | null = null;
   private source: AudioBufferSourceNode | null = null;
@@ -53,9 +59,8 @@ class AudioEngine {
     this._isPlaying = true;
 
     this.source.onended = () => {
-      if (this._isPlaying && ctx.currentTime - this.startTime >= this._duration - 0.1) {
-        this._isPlaying = false;
-      }
+      this._isPlaying = false;
+      if (onTrackEnded) onTrackEnded();
     };
   }
 
@@ -115,6 +120,18 @@ class AudioEngine {
     const data = new Uint8Array(this.analyserNode.frequencyBinCount);
     this.analyserNode.getByteFrequencyData(data);
     return data;
+  }
+
+  async loadAndPlayUrl(url: string): Promise<void> {
+    this.stop();
+    const ctx = this.getCtx();
+
+    const response = await fetch(url);
+    const arrayBuffer = await response.arrayBuffer();
+    this.audioBuffer = await ctx.decodeAudioData(arrayBuffer);
+    this._duration = this.audioBuffer.duration;
+    this.pauseOffset = 0;
+    this.startSource(ctx);
   }
 }
 

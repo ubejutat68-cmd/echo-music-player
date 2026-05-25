@@ -1,6 +1,6 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { usePlayerStore } from '@/stores/playerStore';
-import { audioEngine } from '@/engine/audioEngine';
+import { audioEngine, setOnTrackEnded } from '@/engine/audioEngine';
 
 export function useAudioEngine() {
   const currentTrack = usePlayerStore((s) => s.currentTrack);
@@ -18,6 +18,17 @@ export function useAudioEngine() {
       animFrameRef.current = requestAnimationFrame(updateTime);
     }
   }, [setCurrentTime]);
+
+  // Wire up auto-next on track end
+  useEffect(() => {
+    setOnTrackEnded(() => {
+      const store = usePlayerStore.getState();
+      if (store.playMode !== 'single') {
+        store.next();
+      }
+    });
+    return () => setOnTrackEnded(null);
+  }, []);
 
   useEffect(() => {
     if (!currentTrack) return;

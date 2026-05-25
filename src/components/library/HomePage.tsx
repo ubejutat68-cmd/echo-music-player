@@ -13,8 +13,16 @@ export function HomePage() {
   const recentTracks = tracks.slice(0, 10);
 
   const handleScan = async () => {
-    const lastPath = useLibraryStore.getState().lastScanPath;
-    if (lastPath) await scanFolders([lastPath]);
+    try {
+      const paths = await window.api.selectFolder();
+      if (paths.length > 0) {
+        await scanFolders(paths);
+      }
+    } catch {
+      // Fallback: try scanning last path
+      const lastPath = useLibraryStore.getState().lastScanPath;
+      if (lastPath) await scanFolders([lastPath]);
+    }
   };
 
   if (tracks.length === 0) {

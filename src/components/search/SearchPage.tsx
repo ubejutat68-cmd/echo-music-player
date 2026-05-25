@@ -10,6 +10,8 @@ export function SearchPage() {
   const [history, setHistory] = useState<string[]>(() => {
     try { return JSON.parse(localStorage.getItem('searchHistory') || '[]'); } catch { return []; }
   });
+  const [onlineResults, setOnlineResults] = useState<any[]>([]);
+  const [searchingOnline, setSearchingOnline] = useState(false);
   const tracks = useLibraryStore((s) => s.tracks);
 
   const results = useMemo((): SearchResult | null => {
@@ -40,6 +42,18 @@ export function SearchPage() {
       const newHistory = [q.trim(), ...history].slice(0, 20);
       setHistory(newHistory);
       localStorage.setItem('searchHistory', JSON.stringify(newHistory));
+    }
+    // Trigger online search
+    if (q.trim() && window.api?.neteaseSearch) {
+      setSearchingOnline(true);
+      window.api.neteaseSearch(q.trim()).then((songs) => {
+        setOnlineResults(songs || []);
+        setSearchingOnline(false);
+      }).catch(() => {
+        setSearchingOnline(false);
+      });
+    } else {
+      setOnlineResults([]);
     }
   };
 
@@ -108,6 +122,60 @@ export function SearchPage() {
             </Typography>
           )}
         </>
+      )}
+
+      {/* Online results section */}
+      {query.trim() && (
+        <Box sx={{ mt: 4 }}>
+          <Typography variant="h6" sx={{ mb: 1 }}>
+            在线搜索 {searchingOnline ? '(搜索中...)' : onlineResults.length > 0 ? `(${onlineResults.length})` : ''}
+          </Typography>
+          {onlineResults.length > 0 && (
+            <Box>
+              {onlineResults.map((song) => (
+                <Box
+                  key={song.id}
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    px: 2,
+                    py: 1,
+                    borderRadius: 1,
+                    cursor: 'pointer',
+                    '&:hover': { bgcolor: 'action.hover' },
+                  }}
+                  onClick={async () => {
+                    const url = await window.api.neteaseSongUrl(song.id);
+                    if (url) {
+                      // Play online via audio engine
+                      const { audioEngine } = await import('@/engine/audioEngine');
+                      const { usePlayerStore } = await import('@/stores/playerStore');
+                      audioEngine.loadAndPlayUrl(url).then(() => {
+                        usePlayerStore.getState().setIsPlaying(true);
+                        usePlayerStore.getState().setDuration(audioEngine.getDuration());
+                      });
+                    }
+                  }}
+                >
+                  <Box
+                    component="img"
+                    src={song.album?.picUrl}
+                    sx={{ width: 40, height: 40, borderRadius: 1, mr: 1.5, objectFit: 'cover' }}
+                  />
+                  <Box sx={{ flex: 1, overflow: 'hidden' }}>
+                    <Typography variant="body2" noWrap fontWeight={500}>{song.name}</Typography>
+                    <Typography variant="caption" color="text.secondary" noWrap>
+                      {song.artists?.map((a: any) => a.name).join(', ')} · {song.album?.name}
+                    </Typography>
+                  </Box>
+                  <Typography variant="caption" color="text.secondary">
+                    {Math.floor(song.duration / 60)}:{(Math.floor(song.duration) % 60).toString().padStart(2, '0')}
+                  </Typography>
+                </Box>
+              ))}
+            </Box>
+          )}
+        </Box>
       )}
     </Box>
   );

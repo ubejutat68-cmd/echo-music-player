@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, globalShortcut } from 'electron';
+import { app, BrowserWindow, ipcMain, globalShortcut, dialog } from 'electron';
 import { createMainWindow, getMainWindow } from './windows/mainWindow';
 import { createMiniPlayer, closeMiniPlayer } from './windows/miniPlayer';
 import { createDesktopLyric, closeDesktopLyric } from './windows/desktopLyric';
@@ -7,9 +7,21 @@ import { scanFolders } from './ipc/fileScanner';
 import { parseMetadata } from './ipc/metadataParser';
 import { parseLyric } from './ipc/lyricParser';
 import { getStoreValue, setStoreValue, deleteStoreValue } from './ipc/store';
+import { searchNeteaseMusic, getNeteaseSongUrl, getNeteaseLyric } from './ipc/neteaseApi';
 import * as fs from 'fs';
 
 function registerIpcHandlers(): void {
+  // Folder selection dialog
+  ipcMain.handle('select-folder', async () => {
+    const win = getMainWindow();
+    if (!win) return [];
+    const result = await dialog.showOpenDialog(win, {
+      properties: ['openDirectory'],
+      title: '选择音乐文件夹',
+    });
+    return result.filePaths;
+  });
+
   ipcMain.handle('scan-folders', async (_e, paths: string[]) => {
     return scanFolders(paths);
   });
@@ -52,6 +64,19 @@ function registerIpcHandlers(): void {
 
   ipcMain.on('close-desktop-lyrics', () => {
     closeDesktopLyric();
+  });
+
+  // Netease Cloud Music API handlers
+  ipcMain.handle('netease-search', async (_e, query: string, limit?: number) => {
+    return searchNeteaseMusic(query, limit);
+  });
+
+  ipcMain.handle('netease-song-url', async (_e, id: number) => {
+    return getNeteaseSongUrl(id);
+  });
+
+  ipcMain.handle('netease-lyric', async (_e, id: number) => {
+    return getNeteaseLyric(id);
   });
 }
 

@@ -5,6 +5,7 @@ export interface ElectronAPI {
   readFile(path: string): Promise<ArrayBuffer>;
   parseMetadata(path: string): Promise<Partial<Track>>;
   parseLyric(track: Track): Promise<LyricLine[]>;
+  selectFolder: () => Promise<string[]>;
   store: {
     get(key: string): Promise<any>;
     set(key: string, value: any): Promise<void>;
@@ -15,6 +16,9 @@ export interface ElectronAPI {
   openDesktopLyrics(): void;
   closeDesktopLyrics(): void;
   onMediaKey(callback: (action: 'play' | 'pause' | 'next' | 'prev') => void): void;
+  neteaseSearch: (query: string, limit?: number) => Promise<any[]>;
+  neteaseSongUrl: (id: number) => Promise<string | null>;
+  neteaseLyric: (id: number) => Promise<string | null>;
 }
 
 declare global {

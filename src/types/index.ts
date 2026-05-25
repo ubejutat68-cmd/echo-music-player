@@ -32,6 +32,15 @@ export interface SearchResult {
   albums: { name: string; artist: string; trackCount: number; coverArt: string | null }[];
 }
 
+export interface OnlineTrack {
+  id: number;
+  name: string;
+  artists: { name: string }[];
+  album: { name: string; picUrl: string };
+  duration: number;
+  source: 'netease';
+}
+
 export type PlayMode = 'sequential' | 'loop' | 'single' | 'shuffle';
 export type EQPreset = 'none' | 'pop' | 'rock' | 'classical' | 'jazz' | 'electronic' | 'custom';
 export type ThemeMode = 'light' | 'dark' | 'system';
