@@ -11,7 +11,7 @@ export function createMainWindow(): BrowserWindow {
     minHeight: 600,
     title: 'Music Player',
     webPreferences: {
-      preload: path.join(__dirname, '../preload.js'),
+      preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
     },
