@@ -18,11 +18,13 @@ export interface NeteaseTrack {
   duration: number;
 }
 
-export async function searchNeteaseMusic(query: string, limit = 100): Promise<NeteaseTrack[]> {
+export async function searchNeteaseMusic(query: string, page = 1): Promise<NeteaseTrack[]> {
   try {
     const cookie = getCookie();
-    console.log('[Netease] Searching:', query, cookie ? '(with cookie)' : '(no cookie)');
-    const result = await cloudsearch({ keywords: query, limit, type: 1, cookie: cookie || undefined });
+    const limit = 30;
+    const offset = (page - 1) * limit;
+    console.log('[Netease] Searching:', query, 'page:', page, '(offset:', offset, ')', cookie ? '(with cookie)' : '(no cookie)');
+    const result = await cloudsearch({ keywords: query, limit, offset, type: 1, cookie: cookie || undefined });
     if (result.body.code === 200) {
       const songs = result.body.result?.songs || [];
       console.log(`[Netease] Found ${songs.length} results`);

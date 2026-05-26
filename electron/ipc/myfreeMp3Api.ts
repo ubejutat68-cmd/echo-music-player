@@ -27,48 +27,40 @@ export interface MyFreeMp3Track {
   coverUrl: string;
 }
 
-export async function searchMyFreeMp3(query: string, limit = 100): Promise<MyFreeMp3Track[]> {
+export async function searchMyFreeMp3(query: string, page = 1): Promise<MyFreeMp3Track[]> {
   try {
-    console.log('[MyFreeMp3] Searching:', query);
+    console.log('[MyFreeMp3] Searching:', query, 'page:', page);
+    const pageParam = page > 1 ? `&page=${page}` : '';
+    const html = await fetchHtml(`https://myfreemp3online.com/search.php?q=${encodeURIComponent(query)}${pageParam}`);
+
     const tracks: MyFreeMp3Track[] = [];
     const seen = new Set<string>();
 
-    // Fetch up to 5 pages to reach the limit
-    for (let page = 1; page <= 5 && tracks.length < limit; page++) {
-      const pageParam = page > 1 ? `&page=${page}` : '';
-      const html = await fetchHtml(`https://myfreemp3online.com/search.php?q=${encodeURIComponent(query)}${pageParam}`);
+    const linkRegex = /<a\s+[^>]*href="(https?:\/\/myfreemp3online\.com\/song\/\d+\.html)"[^>]*>([\s\S]*?)<\/a>/gi;
+    let match;
+    while ((match = linkRegex.exec(html)) !== null) {
+      const link = match[1];
+      const innerHtml = match[2];
 
-      const linkRegex = /<a\s+[^>]*href="(https?:\/\/myfreemp3online\.com\/song\/\d+\.html)"[^>]*>([\s\S]*?)<\/a>/gi;
-      let match;
-      let pageHasResults = false;
+      const idMatch = link.match(/\/song\/(\d+)\.html/);
+      if (!idMatch || seen.has(idMatch[1])) continue;
+      seen.add(idMatch[1]);
 
-      while ((match = linkRegex.exec(html)) !== null && tracks.length < limit) {
-        const link = match[1];
-        const innerHtml = match[2];
+      const cleanTitle = innerHtml.replace(/<[^>]+>/g, '').trim();
+      if (!cleanTitle || cleanTitle === '下载') continue;
 
-        const idMatch = link.match(/\/song\/(\d+)\.html/);
-        if (!idMatch || seen.has(idMatch[1])) continue;
-        seen.add(idMatch[1]);
-
-        const cleanTitle = innerHtml.replace(/<[^>]+>/g, '').trim();
-        if (!cleanTitle || cleanTitle === '下载') continue;
-
-        let title = cleanTitle;
-        let artist = '';
-        const dashIdx = cleanTitle.lastIndexOf('-');
-        if (dashIdx > 0) {
-          artist = cleanTitle.substring(0, dashIdx).trim();
-          title = cleanTitle.substring(dashIdx + 1).trim();
-        }
-
-        pageHasResults = true;
-        tracks.push({ id: idMatch[1], title, artist, songUrl: '', coverUrl: '' });
+      let title = cleanTitle;
+      let artist = '';
+      const dashIdx = cleanTitle.lastIndexOf('-');
+      if (dashIdx > 0) {
+        artist = cleanTitle.substring(0, dashIdx).trim();
+        title = cleanTitle.substring(dashIdx + 1).trim();
       }
 
-      if (!pageHasResults) break; // No more results on this page, stop paginating
+      tracks.push({ id: idMatch[1], title, artist, songUrl: '', coverUrl: '' });
     }
 
-    console.log(`[MyFreeMp3] Found ${tracks.length} results`);
+    console.log(`[MyFreeMp3] Page ${page}: ${tracks.length} results`);
     return tracks;
   } catch (err: any) {
     console.error('[MyFreeMp3] Search error:', err.message);
@@ -81,29 +73,21 @@ export async function getMyFreeMp3SongUrl(songId: string): Promise<{ songUrl: st
     console.log('[MyFreeMp3] Fetching song page:', songId);
     const html = await fetchHtml(`https://myfreemp3online.com/song/${songId}.html`);
 
-    // Extract audio URL from <audio src="..."> or APlayer config
     let songUrl = '';
     const audioMatch = html.match(/<audio[^>]*src="([^"]+)"/i);
     if (audioMatch) {
       songUrl = audioMatch[1];
     } else {
-      // Try APlayer config: url: '...'
       const aplayerMatch = html.match(/url:\s*['"]([^'"]+)['"]/);
-      if (aplayerMatch) {
-        songUrl = aplayerMatch[1];
-      }
+      if (aplayerMatch) songUrl = aplayerMatch[1];
     }
 
-    // Extract cover image
     let coverUrl = '';
     const coverMatch = html.match(/<img[^>]*class="[^"]*ue-image[^"]*"[^>]*src="([^"]+)"/i)
       || html.match(/<img[^>]*src="([^"]*kuwo[^"]*)"[^>]*>/i)
       || html.match(/<img[^>]*src="([^"]*cover[^"]*)"[^>]*>/i);
-    if (coverMatch) {
-      coverUrl = coverMatch[1];
-    }
+    if (coverMatch) coverUrl = coverMatch[1];
 
-    // Extract title/artist
     let title = '';
     let artist = '';
     const titleMatch = html.match(/<title>([^-]+)(?:-([^.]+))?\./);
@@ -116,10 +100,7 @@ export async function getMyFreeMp3SongUrl(songId: string): Promise<{ songUrl: st
       } else {
         title = fullTitle;
       }
-      // The second capture could be the format info
-      if (titleMatch[2] && !title) {
-        title = titleMatch[2].trim();
-      }
+      if (titleMatch[2] && !title) title = titleMatch[2].trim();
     }
 
     if (!songUrl) {

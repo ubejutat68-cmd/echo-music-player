@@ -16,9 +16,19 @@ export interface ElectronAPI {
   openDesktopLyrics(): void;
   closeDesktopLyrics(): void;
   onMediaKey(callback: (action: 'play' | 'pause' | 'next' | 'prev') => void): void;
-  neteaseSearch: (query: string, limit?: number) => Promise<any[]>;
+  neteaseSearch: (query: string, page?: number) => Promise<any[]>;
   neteaseSongUrl: (id: number) => Promise<string | null>;
   neteaseLyric: (id: number) => Promise<string | null>;
+  bilibiliSearch: (query: string, page?: number) => Promise<any[]>;
+  bilibiliAudioUrl: (bvid: string, cid?: number) => Promise<{ url: string; cid: number } | null>;
+  myfreemp3Search: (query: string, page?: number) => Promise<any[]>;
+  myfreemp3SongUrl: (songId: string) => Promise<{ songUrl: string; coverUrl: string; title: string; artist: string } | null>;
+  fetchBuffer: (url: string, referer?: string) => Promise<ArrayBuffer>;
+  getPlayerState: () => Promise<any>;
+  syncPlayerState: (state: any) => void;
+  onPlayerStateUpdate: (callback: (state: any) => void) => void;
+  sendPlayerAction: (action: string) => void;
+  onPlayerAction: (callback: (action: string) => void) => void;
 }
 
 declare global {

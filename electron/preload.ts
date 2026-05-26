@@ -18,7 +18,21 @@ contextBridge.exposeInMainWorld('api', {
   onMediaKey: (callback: (action: string) => void) => {
     ipcRenderer.on('media-key', (_event, action) => callback(action));
   },
-  neteaseSearch: (query: string, limit?: number) => ipcRenderer.invoke('netease-search', query, limit),
+  neteaseSearch: (query: string, page?: number) => ipcRenderer.invoke('netease-search', query, page),
   neteaseSongUrl: (id: number) => ipcRenderer.invoke('netease-song-url', id),
   neteaseLyric: (id: number) => ipcRenderer.invoke('netease-lyric', id),
+  bilibiliSearch: (query: string, page?: number) => ipcRenderer.invoke('bilibili-search', query, page),
+  bilibiliAudioUrl: (bvid: string, cid?: number) => ipcRenderer.invoke('bilibili-audio-url', bvid, cid),
+  myfreemp3Search: (query: string, page?: number) => ipcRenderer.invoke('myfreemp3-search', query, page),
+  myfreemp3SongUrl: (songId: string) => ipcRenderer.invoke('myfreemp3-song-url', songId),
+  fetchBuffer: (url: string, referer?: string) => ipcRenderer.invoke('fetch-buffer', url, referer),
+  getPlayerState: () => ipcRenderer.invoke('get-player-state'),
+  syncPlayerState: (state: any) => ipcRenderer.send('sync-player-state', state),
+  onPlayerStateUpdate: (callback: (state: any) => void) => {
+    ipcRenderer.on('player-state-update', (_e, state) => callback(state));
+  },
+  sendPlayerAction: (action: string) => ipcRenderer.send('player-action', action),
+  onPlayerAction: (callback: (action: string) => void) => {
+    ipcRenderer.on('player-action', (_e, action) => callback(action));
+  },
 });
