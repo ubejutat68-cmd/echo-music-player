@@ -32,54 +32,56 @@ export interface BilibiliTrack {
 export async function searchBilibiliMusic(query: string, limit = 100): Promise<BilibiliTrack[]> {
   try {
     console.log('[Bilibili] Searching:', query);
-    const url = `https://api.bilibili.com/x/web-interface/search/all/v2?keyword=${encodeURIComponent(query)}`;
-    const result = await biliRequest(url);
-
-    if (result?.code !== 0) {
-      console.log('[Bilibili] Search failed:', result?.message);
-      return [];
-    }
-
     const tracks: BilibiliTrack[] = [];
+    const seen = new Set<string>();
 
-    // Find video results in the result array
-    const videoSection = result.data?.result?.find((s: any) => s.result_type === 'video');
-    const items = videoSection?.data || [];
+    // Fetch up to 5 pages to reach the limit (each page returns ~20 results)
+    for (let page = 1; page <= 5 && tracks.length < limit; page++) {
+      const url = `https://api.bilibili.com/x/web-interface/search/all/v2?keyword=${encodeURIComponent(query)}&page=${page}`;
+      const result = await biliRequest(url);
 
-    for (const v of items) {
-      // Skip restricted content and live streams
-      if (v.arcrank === '-1' || v.is_live) continue;
-
-      // Parse duration from mm:ss or HH:MM:SS format
-      let duration = 0;
-      if (v.duration) {
-        const parts = v.duration.split(':').map(Number);
-        if (parts.length === 3) duration = parts[0] * 3600 + parts[1] * 60 + parts[2];
-        else if (parts.length === 2) duration = parts[0] * 60 + parts[1];
-        else duration = parts[0];
+      if (result?.code !== 0) {
+        console.log('[Bilibili] Search failed on page', page, ':', result?.message);
+        break;
       }
 
-      // Filter: prefer music-related content
-      const tag = v.tag || '';
-      const typename = v.typename || '';
-      const isMusicRelated = /音乐|歌曲|MV|翻唱|演唱会|演奏|混音|remix|cover|live/i.test(tag + typename + v.title);
+      const videoSection = result.data?.result?.find((s: any) => s.result_type === 'video');
+      const items = videoSection?.data || [];
 
-      const playCount = (v.play || 0) as number;
+      if (items.length === 0) break;
 
-      tracks.push({
-        id: `bv-${v.bvid}`,
-        bvid: v.bvid,
-        cid: 0,
-        title: v.title.replace(/<[^>]+>/g, ''),
-        author: v.author || v.owner?.name || '',
-        duration,
-        coverUrl: v.pic || '',
-        _musicRelated: isMusicRelated,
-        _playCount: playCount,
-      } as any);
+      for (const v of items) {
+        if (seen.has(v.bvid)) continue;
+        seen.add(v.bvid);
+
+        if (v.arcrank === '-1' || v.is_live) continue;
+
+        let duration = 0;
+        if (v.duration) {
+          const parts = v.duration.split(':').map(Number);
+          if (parts.length === 3) duration = parts[0] * 3600 + parts[1] * 60 + parts[2];
+          else if (parts.length === 2) duration = parts[0] * 60 + parts[1];
+          else duration = parts[0];
+        }
+
+        const tag = v.tag || '';
+        const typename = v.typename || '';
+        const isMusicRelated = /音乐|歌曲|MV|翻唱|演唱会|演奏|混音|remix|cover|live/i.test(tag + typename + v.title);
+
+        tracks.push({
+          id: `bv-${v.bvid}`,
+          bvid: v.bvid,
+          cid: 0,
+          title: v.title.replace(/<[^>]+>/g, ''),
+          author: v.author || v.owner?.name || '',
+          duration,
+          coverUrl: v.pic || '',
+          _musicRelated: isMusicRelated,
+          _playCount: (v.play || 0) as number,
+        } as any);
+      }
     }
 
-    // Sort by music-related first, then by play count (popularity)
     tracks.sort((a: any, b: any) => {
       const aMusic = (a._musicRelated as boolean) ? 1 : 0;
       const bMusic = (b._musicRelated as boolean) ? 1 : 0;

@@ -30,42 +30,42 @@ export interface MyFreeMp3Track {
 export async function searchMyFreeMp3(query: string, limit = 100): Promise<MyFreeMp3Track[]> {
   try {
     console.log('[MyFreeMp3] Searching:', query);
-    const html = await fetchHtml(`https://myfreemp3online.com/search.php?q=${encodeURIComponent(query)}`);
-
     const tracks: MyFreeMp3Track[] = [];
     const seen = new Set<string>();
 
-    // Match <a> tags linking to song pages and extract their inner text
-    const linkRegex = /<a\s+[^>]*href="(https?:\/\/myfreemp3online\.com\/song\/\d+\.html)"[^>]*>([\s\S]*?)<\/a>/gi;
-    let match;
-    while ((match = linkRegex.exec(html)) !== null && tracks.length < limit) {
-      const link = match[1];
-      const innerHtml = match[2];
+    // Fetch up to 5 pages to reach the limit
+    for (let page = 1; page <= 5 && tracks.length < limit; page++) {
+      const pageParam = page > 1 ? `&page=${page}` : '';
+      const html = await fetchHtml(`https://myfreemp3online.com/search.php?q=${encodeURIComponent(query)}${pageParam}`);
 
-      const idMatch = link.match(/\/song\/(\d+)\.html/);
-      if (!idMatch || seen.has(idMatch[1])) continue;
-      seen.add(idMatch[1]);
+      const linkRegex = /<a\s+[^>]*href="(https?:\/\/myfreemp3online\.com\/song\/\d+\.html)"[^>]*>([\s\S]*?)<\/a>/gi;
+      let match;
+      let pageHasResults = false;
 
-      // Clean HTML tags from inner text
-      const cleanTitle = innerHtml.replace(/<[^>]+>/g, '').trim();
-      if (!cleanTitle || cleanTitle === '下载') continue;
+      while ((match = linkRegex.exec(html)) !== null && tracks.length < limit) {
+        const link = match[1];
+        const innerHtml = match[2];
 
-      // Split artist-title
-      let title = cleanTitle;
-      let artist = '';
-      const dashIdx = cleanTitle.lastIndexOf('-');
-      if (dashIdx > 0) {
-        artist = cleanTitle.substring(0, dashIdx).trim();
-        title = cleanTitle.substring(dashIdx + 1).trim();
+        const idMatch = link.match(/\/song\/(\d+)\.html/);
+        if (!idMatch || seen.has(idMatch[1])) continue;
+        seen.add(idMatch[1]);
+
+        const cleanTitle = innerHtml.replace(/<[^>]+>/g, '').trim();
+        if (!cleanTitle || cleanTitle === '下载') continue;
+
+        let title = cleanTitle;
+        let artist = '';
+        const dashIdx = cleanTitle.lastIndexOf('-');
+        if (dashIdx > 0) {
+          artist = cleanTitle.substring(0, dashIdx).trim();
+          title = cleanTitle.substring(dashIdx + 1).trim();
+        }
+
+        pageHasResults = true;
+        tracks.push({ id: idMatch[1], title, artist, songUrl: '', coverUrl: '' });
       }
 
-      tracks.push({
-        id: idMatch[1],
-        title,
-        artist,
-        songUrl: '',
-        coverUrl: '',
-      });
+      if (!pageHasResults) break; // No more results on this page, stop paginating
     }
 
     console.log(`[MyFreeMp3] Found ${tracks.length} results`);
