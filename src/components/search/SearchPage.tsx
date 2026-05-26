@@ -356,7 +356,11 @@ export function SearchPage() {
         <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
             <Typography variant="h6">在线搜索</Typography>
-            <Tabs value={onlineTab} onChange={(_, v) => setOnlineTab(v)} sx={{ minHeight: 'auto', '& .MuiTab-root': { minHeight: 'auto', py: 0.5 } }}>
+            <Tabs value={onlineTab} onChange={(_, v) => {
+              setOnlineTab(v);
+              // Reset scroll position when switching tabs
+              if (scrollBoxRef.current) scrollBoxRef.current.scrollTop = 0;
+            }} sx={{ minHeight: 'auto', '& .MuiTab-root': { minHeight: 'auto', py: 0.5 } }}>
               <Tab label={`MP3${searchingMyfreeMp3 ? ' ...' : myfreemp3Results.length > 0 ? ` (${myfreemp3Results.length})` : ''}`} />
               <Tab label={`B站${searchingBilibili ? ' ...' : bilibiliResults.length > 0 ? ` (${bilibiliResults.length})` : ''}`} />
               <Tab label={`网易云${searchingNetease ? ' ...' : neteaseResults.length > 0 ? ` (${neteaseResults.length})` : ''}`} />
@@ -368,6 +372,8 @@ export function SearchPage() {
           )}
           <Box ref={scrollBoxRef} sx={{ flex: 1, overflow: 'auto', minHeight: 0 }}>
             {onlineResults.map((song: any) => {
+                const sourceLabel = onlineSource === 'myfree' ? 'MP3' : onlineSource === 'bili' ? 'B站' : '网易云';
+                const sourceColor = onlineSource === 'myfree' ? '#ff9800' : onlineSource === 'bili' ? '#e91e90' : '#e53935';
                 const key = onlineSource === 'myfree' ? `myfree-${song.id}` : onlineSource === 'bili' ? song.bvid : `netease-${song.id}`;
                 const cover = onlineSource === 'myfree' ? (song.coverUrl || '') : onlineSource === 'bili' ? (song.coverUrl || '') : (song.album?.picUrl || '');
                 const title = onlineSource === 'myfree' ? song.title : onlineSource === 'bili' ? song.title : song.name;
@@ -403,7 +409,12 @@ export function SearchPage() {
                     <Typography variant="body2" noWrap fontWeight={500}>{title}</Typography>
                     <Typography variant="caption" color="text.secondary" noWrap>{subtitle}</Typography>
                   </Box>
-                  <Typography variant="caption" color="text.secondary" sx={{ mr: 0.5 }}>{durText}</Typography>
+                  <Typography
+                    variant="caption"
+                    sx={{ mr: 0.5, px: 0.8, py: 0.1, borderRadius: 0.8, fontSize: 10, fontWeight: 600, color: sourceColor, border: `1px solid ${sourceColor}`, opacity: 0.7 }}
+                  >
+                    {sourceLabel}
+                  </Typography>
                   {/* Heart — add to favorites */}
                   <IconButton
                     size="small"
